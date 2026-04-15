@@ -19,26 +19,33 @@ jobs:
 
       - name: Extract and Repair Paths
         run: |
-          echo "جاري فك الضغط..."
-          unzip Anubis-Android-Server.zip -d extracted_files
+          echo "البحث عن أي ملف مضغوط..."
+          # دي الحركة الصايعة: بيدور على أول ملف زيب يقابله مهما كان اسمه
+          ZIP_FILE=$(ls *.zip | head -n 1)
           
-          echo "البحث عن ملف gradlew لتحديد جذر المشروع..."
+          if [ -z "$ZIP_FILE" ]; then
+            echo "خطأ: مفيش أي ملف ZIP مرفوع في المستودع!"
+            ls -R
+            exit 1
+          fi
+          
+          echo "لقيت الملف: $ZIP_FILE .. جاري فك الضغط"
+          unzip "$ZIP_FILE" -d extracted_files
+          
+          echo "البحث عن ملف gradlew..."
           GRADLE_PATH=$(find extracted_files -name "gradlew" | head -n 1)
           
           if [ -z "$GRADLE_PATH" ]; then
-            echo "خطأ: لم يتم العثور على ملفات مشروع أندرويد داخل الـ ZIP!"
+            echo "خطأ: ملف gradlew مش موجود جوه الزيب!"
             exit 1
           fi
           
           PROJECT_ROOT=$(dirname "$GRADLE_PATH")
-          echo "تم العثور على المشروع في: $PROJECT_ROOT"
-          
-          # نقل كل شيء للمسار الرئيسي
           mv $PROJECT_ROOT/* .
           chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
