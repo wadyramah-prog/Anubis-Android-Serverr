@@ -1,4 +1,4 @@
-name: Build Anubis APK from ZIP
+name: Build Anubis APK
 
 on:
   push:
@@ -17,23 +17,32 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Unzip Project
+      - name: Extract and Repair Paths
         run: |
-          # فك ضغط الملف اللي انت رفعته
-          unzip Anubis-Android-Server.zip
+          echo "جاري فك الضغط..."
+          unzip Anubis-Android-Server.zip -d extracted_files
           
-          # نقل الملفات للمسار الرئيسي عشان جيت هب يشوفها
-          find . -maxdepth 2 -name "gradlew" -exec dirname {} + | xargs -I {} mv {}/* . || true
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+          echo "البحث عن ملف gradlew لتحديد جذر المشروع..."
+          GRADLE_PATH=$(find extracted_files -name "gradlew" | head -n 1)
+          
+          if [ -z "$GRADLE_PATH" ]; then
+            echo "خطأ: لم يتم العثور على ملفات مشروع أندرويد داخل الـ ZIP!"
+            exit 1
+          fi
+          
+          PROJECT_ROOT=$(dirname "$GRADLE_PATH")
+          echo "تم العثور على المشروع في: $PROJECT_ROOT"
+          
+          # نقل كل شيء للمسار الرئيسي
+          mv $PROJECT_ROOT/* .
+          chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Anubis-NVR-Debug-APK
+          name: Anubis-NVR-Final
           path: "**/build/outputs/apk/debug/*.apk"
           
